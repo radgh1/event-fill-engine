@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Event Fill Engine</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-row">
+      <div>
+        <h1>Event Fill Engine</h1>
+        <p class="subtitle">Compliant outreach, registration, reminders, and check-in for health events.</p>
+      </div>
+      <div class="header-actions">
+        <button id="loadDemoBtn" class="btn secondary" type="button">Load Demo Data</button>
+        <button id="clearDataBtn" class="btn danger" type="button">Clear All Data</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <section id="dashboard" class="card">
+      <div class="section-head">
+        <h2>Dashboard</h2>
+      </div>
+      <div class="metric-grid" id="dashboardMetrics"></div>
+      <div class="goal-progress-wrap">
+        <div class="goal-progress-label">
+          <span>Progress Toward Goal</span>
+          <span id="goalProgressText">0%</span>
+        </div>
+        <div class="goal-progress-track" role="progressbar" aria-label="Attendance progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+          <div id="goalProgressBar" class="goal-progress-fill"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="event-setup" class="card">
+      <div class="section-head">
+        <h2>Event Setup</h2>
+      </div>
+      <form id="eventForm" class="form-grid">
+        <label>
+          Event Name
+          <input type="text" name="name" required />
+        </label>
+        <label>
+          Date
+          <input type="date" name="date" required />
+        </label>
+        <label>
+          Time
+          <input type="time" name="time" required />
+        </label>
+        <label>
+          Location
+          <input type="text" name="location" required />
+        </label>
+        <label>
+          Attendance Goal
+          <input type="number" name="goal" min="0" step="1" required />
+        </label>
+        <label>
+          Offer / Topic
+          <input type="text" name="topic" />
+        </label>
+        <label class="full-width">
+          Target Audience Notes
+          <textarea name="audienceNotes" rows="3"></textarea>
+        </label>
+        <div class="full-width action-row">
+          <button class="btn" type="submit">Save Event</button>
+          <span id="eventSaveStatus" class="save-status" aria-live="polite"></span>
+        </div>
+      </form>
+    </section>
+
+    <section id="lead-import" class="card">
+      <div class="section-head">
+        <h2>Lead Import</h2>
+        <p>Paste CSV style lines: name, phone, email, condition, city, status</p>
+      </div>
+      <form id="leadImportForm" class="stack">
+        <textarea id="leadCsvInput" rows="7" placeholder="Jane Smith, 555-123-9999, jane@example.com, joint pain, Austin, New"></textarea>
+        <div class="action-row">
+          <button class="btn" type="submit">Import Leads</button>
+          <span id="leadImportStatus" class="save-status" aria-live="polite"></span>
+        </div>
+      </form>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Phone</th>
+              <th>Email</th>
+              <th>Condition</th>
+              <th>City</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="leadsTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="scripts" class="card">
+      <div class="section-head">
+        <h2>Outreach Script Generator</h2>
+        <p id="scriptLeadLabel">Select a lead from the table to generate compliant scripts.</p>
+      </div>
+      <div id="scriptsOutput" class="script-grid empty-state">
+        <p>No lead selected yet.</p>
+      </div>
+    </section>
+
+    <section id="registration" class="card">
+      <div class="section-head">
+        <h2>Registration</h2>
+      </div>
+      <form id="attendeeForm" class="form-grid">
+        <label>
+          Name
+          <input name="name" type="text" required />
+        </label>
+        <label>
+          Phone
+          <input name="phone" type="tel" required />
+        </label>
+        <label>
+          Email
+          <input name="email" type="email" />
+        </label>
+        <label>
+          Guest Count
+          <input name="guestCount" type="number" min="0" step="1" value="0" required />
+        </label>
+        <label class="full-width">
+          Notes
+          <textarea name="notes" rows="2"></textarea>
+        </label>
+        <div class="full-width action-row">
+          <button class="btn" type="submit">Register Attendee</button>
+          <span id="attendeeSaveStatus" class="save-status" aria-live="polite"></span>
+        </div>
+      </form>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Phone</th>
+              <th>Email</th>
+              <th>Guests</th>
+              <th>Status</th>
+              <th>Checked In</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody id="attendeesTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="reminders" class="card">
+      <div class="section-head">
+        <h2>Reminder Queue</h2>
+        <p>Attendees who need confirmation and reminder outreach.</p>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Attendee</th>
+              <th>Status</th>
+              <th>Needs</th>
+              <th>Reminder Copy</th>
+            </tr>
+          </thead>
+          <tbody id="reminderTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="check-in" class="card">
+      <div class="section-head">
+        <h2>Check-In Mode</h2>
+        <p>Mobile-friendly door screen: search and check in attendees quickly.</p>
+      </div>
+      <div class="checkin-tools">
+        <input id="checkinSearchInput" type="search" placeholder="Search name or phone" />
+        <strong id="checkedInCount">Checked In: 0</strong>
+      </div>
+      <div id="checkinList" class="checkin-list"></div>
+    </section>
+
+    <section id="analytics" class="card">
+      <div class="section-head">
+        <h2>Analytics</h2>
+      </div>
+      <div id="analyticsGrid" class="metric-grid"></div>
+      <div id="leadNeedPanel" class="lead-need-panel"></div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
