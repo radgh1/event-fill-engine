@@ -52,6 +52,23 @@ h1 {
   color: #d4eaf5;
 }
 
+.mini-subtitle {
+  margin: 0.2rem 0 0;
+  color: #b9dbea;
+  font-size: 0.92rem;
+}
+
+.outcome-banner {
+  margin-top: 0.65rem;
+  border: 1px solid #7fb6c9;
+  background: rgba(234, 248, 252, 0.16);
+  color: #f2fbff;
+  border-radius: 10px;
+  padding: 0.65rem 0.8rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
 .header-tools {
   display: grid;
   gap: 0.7rem;
@@ -125,6 +142,10 @@ h1 {
   padding: 0.45rem 0.8rem;
   cursor: pointer;
   white-space: nowrap;
+}
+
+.status-summary-row {
+  margin-bottom: 0.5rem;
 }
 
 main {
@@ -384,6 +405,16 @@ th {
   display: grid;
   grid-template-columns: repeat(2, minmax(240px, 1fr));
   gap: 0.8rem;
+}
+
+.funnel-target-summary {
+  margin: 0.7rem 0 0;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #edf5f8;
+  color: #214b63;
+  font-weight: 600;
 }
 
 .strategy-card ul {

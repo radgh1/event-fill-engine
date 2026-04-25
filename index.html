@@ -11,7 +11,9 @@
     <div class="container header-row">
       <div>
         <h1>Event Fill Engine</h1>
-        <p class="subtitle">Campaign-oriented planning and event execution for repeatable room fill across cities.</p>
+        <p class="subtitle">Predictable campaign planning for filling live event rooms across multiple cities.</p>
+        <p class="mini-subtitle">Plan your funnel, execute outreach, and track attendance outcomes in one workflow.</p>
+        <div id="outcomeBanner" class="outcome-banner" aria-live="polite"></div>
       </div>
       <div class="header-tools">
         <div class="event-switcher">
@@ -32,12 +34,12 @@
   <nav class="top-nav" aria-label="Primary">
     <div class="container nav-row">
       <div class="tab-list" id="tabList">
-        <button class="tab-btn active" data-tab="dashboard" type="button">Dashboard</button>
+        <button class="tab-btn active" data-tab="overview" type="button">Overview</button>
         <button class="tab-btn" data-tab="leads" type="button">Leads</button>
-        <button class="tab-btn" data-tab="campaign" type="button">Campaign Planner</button>
-        <button class="tab-btn" data-tab="registration" type="button">Registration</button>
+        <button class="tab-btn" data-tab="campaign" type="button">Campaign Plan</button>
+        <button class="tab-btn" data-tab="attendees" type="button">Attendees</button>
         <button class="tab-btn" data-tab="checkin" type="button">Check-In</button>
-        <button class="tab-btn" data-tab="analytics" type="button">Analytics</button>
+        <button class="tab-btn" data-tab="performance" type="button">Performance</button>
       </div>
       <button id="readyBadge" class="ready-badge" type="button" aria-haspopup="dialog">
         Prototype -> Production Ready Architecture
@@ -46,10 +48,10 @@
   </nav>
 
   <main class="container">
-    <section class="tab-panel active" data-panel="dashboard">
+    <section class="tab-panel active" data-panel="overview">
       <section id="dashboard" class="card">
         <div class="section-head">
-          <h2>Dashboard</h2>
+          <h2>Overview</h2>
         </div>
         <div class="metric-grid" id="dashboardMetrics"></div>
         <div class="goal-progress-wrap">
@@ -61,6 +63,23 @@
             <div id="goalProgressBar" class="goal-progress-fill"></div>
           </div>
         </div>
+      </section>
+
+      <section id="campaign-status-card" class="card">
+        <div class="section-head">
+          <h2>Current Campaign Status</h2>
+        </div>
+        <div class="status-summary-row">
+          <span id="campaignStatusBadge" class="status-chip"></span>
+        </div>
+        <ul id="campaignStatusBullets" class="tips-list"></ul>
+      </section>
+
+      <section id="next-actions-card" class="card">
+        <div class="section-head">
+          <h2>What To Do Next</h2>
+        </div>
+        <ul id="nextActionsList" class="tips-list"></ul>
       </section>
 
       <section id="event-setup" class="card">
@@ -204,6 +223,7 @@
             <input id="plannerConversionRate" type="number" min="1" max="100" step="1" value="25" />
           </label>
         </form>
+        <p id="funnelTargetSummary" class="funnel-target-summary"></p>
         <div id="campaignPlannerMetrics" class="metric-grid"></div>
         <div id="campaignFunnel" class="funnel"></div>
       </section>
@@ -240,7 +260,7 @@
       </section>
     </section>
 
-    <section class="tab-panel" data-panel="registration">
+    <section class="tab-panel" data-panel="attendees">
       <section id="registration" class="card">
         <div class="section-head">
           <h2>Registration</h2>
@@ -304,7 +324,7 @@
       </section>
     </section>
 
-    <section class="tab-panel" data-panel="analytics">
+    <section class="tab-panel" data-panel="performance">
       <section id="analytics" class="card">
         <div class="section-head">
           <h2>Analytics</h2>

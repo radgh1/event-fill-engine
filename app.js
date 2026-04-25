@@ -30,7 +30,7 @@
       showRate: DEFAULT_PLANNER.showRate,
       conversionRate: DEFAULT_PLANNER.conversionRate
     },
-    activeTab: "dashboard"
+    activeTab: "overview"
   };
 
   const els = {
@@ -48,6 +48,11 @@
     readyBadge: document.getElementById("readyBadge"),
     architectureDialog: document.getElementById("architectureDialog"),
     closeArchitectureDialog: document.getElementById("closeArchitectureDialog"),
+
+    outcomeBanner: document.getElementById("outcomeBanner"),
+    campaignStatusBadge: document.getElementById("campaignStatusBadge"),
+    campaignStatusBullets: document.getElementById("campaignStatusBullets"),
+    nextActionsList: document.getElementById("nextActionsList"),
 
     dashboardMetrics: document.getElementById("dashboardMetrics"),
     goalProgressText: document.getElementById("goalProgressText"),
@@ -74,6 +79,7 @@
     plannerTargetAttendance: document.getElementById("plannerTargetAttendance"),
     plannerShowRate: document.getElementById("plannerShowRate"),
     plannerConversionRate: document.getElementById("plannerConversionRate"),
+    funnelTargetSummary: document.getElementById("funnelTargetSummary"),
     campaignPlannerMetrics: document.getElementById("campaignPlannerMetrics"),
     campaignFunnel: document.getElementById("campaignFunnel"),
     expectedFunnelOutput: document.getElementById("expectedFunnelOutput"),
@@ -197,7 +203,14 @@
           showRate: toNumber(parsed.planner && parsed.planner.showRate) || DEFAULT_PLANNER.showRate,
           conversionRate: toNumber(parsed.planner && parsed.planner.conversionRate) || DEFAULT_PLANNER.conversionRate
         },
-        activeTab: parsed.activeTab || "dashboard"
+        activeTab:
+          (parsed.activeTab === "dashboard"
+            ? "overview"
+            : parsed.activeTab === "registration"
+            ? "attendees"
+            : parsed.activeTab === "analytics"
+            ? "performance"
+            : parsed.activeTab) || "overview"
       };
     }
 
@@ -224,7 +237,7 @@
           showRate: DEFAULT_PLANNER.showRate,
           conversionRate: DEFAULT_PLANNER.conversionRate
         },
-        activeTab: "dashboard"
+        activeTab: "overview"
       };
     }
 
@@ -385,7 +398,7 @@
       goal: goal,
       seatsRemaining: Math.max(goal - expectedAttendance, 0),
       progressPct: goal > 0 ? clamp(Math.round((expectedAttendance / goal) * 100), 0, 100) : 0,
-      leadToRegistrationPct: totalLeads > 0 ? (registrations / totalLeads) * 100 : 0,
+      leadToRegistrationPct: totalLeads > 0 ? (expectedAttendance / totalLeads) * 100 : 0,
       registrationToShowPct: expectedAttendance > 0 ? (checkedInHeadcount / expectedAttendance) * 100 : 0,
       overallConversionPct: totalLeads > 0 ? (checkedInHeadcount / totalLeads) * 100 : 0
     };
@@ -404,6 +417,8 @@
 
     const requiredRegistrations = Math.ceil(targetAttendance / showRate);
     const requiredLeads = Math.ceil(requiredRegistrations / conversionRate);
+    const projectedLow = Math.floor(requiredRegistrations * 0.75);
+    const projectedHigh = Math.ceil(requiredRegistrations * 1.0);
 
     const gapVsCurrentLeads = Math.max(requiredLeads - event.leads.length, 0);
     const gapVsCurrentRegistered = Math.max(requiredRegistrations - event.attendees.length, 0);
@@ -417,6 +432,8 @@
       conversionRatePct: conversionRatePct,
       requiredRegistrations: requiredRegistrations,
       requiredLeads: requiredLeads,
+      projectedLow: projectedLow,
+      projectedHigh: projectedHigh,
       gapVsCurrentLeads: gapVsCurrentLeads,
       gapVsCurrentRegistered: gapVsCurrentRegistered,
       expectedFunnel: {
@@ -446,6 +463,13 @@
 
     const cityTotals = {};
     event.attendees.forEach(function (attendee) {
+      if (
+        attendee.status !== "Registered" &&
+        attendee.status !== "Confirmed" &&
+        attendee.status !== "Checked In"
+      ) {
+        return;
+      }
       const city = findLeadCityForAttendee(event, attendee);
       cityTotals[city] = (cityTotals[city] || 0) + getHeadcount(attendee);
     });
@@ -461,8 +485,134 @@
 
     return {
       city: entries[0][0],
-      registrations: entries[0][1]
+      expectedAttendees: entries[0][1]
     };
+  }
+
+  function getCampaignStatus() {
+    const event = getActiveEvent();
+    const planner = computePlanner();
+    const metrics = computeMetrics(event);
+
+    const hasCheckinSignal = metrics.expectedAttendance > 0;
+    const checkinRatio = hasCheckinSignal
+      ? metrics.checkedInHeadcount / metrics.expectedAttendance
+      : 0;
+
+    let label = "On Track";
+    if (event.leads.length < planner.requiredLeads) {
+      label = "Needs More Leads";
+    } else if (metrics.expectedAttendance < planner.requiredRegistrations) {
+      label = "Registration Behind";
+    } else if (hasCheckinSignal && checkinRatio < 0.3) {
+      label = "Check-In Risk";
+    }
+
+    const leadBullet =
+      event.leads.length >= planner.requiredLeads
+        ? "✔ Lead volume sufficient"
+        : "⚠ Lead volume below target by " + (planner.requiredLeads - event.leads.length);
+
+    const registrationBullet =
+      metrics.expectedAttendance >= planner.requiredRegistrations
+        ? "✔ Registration pacing meets projection"
+        : "⚠ Registration slightly behind target";
+
+    const showBullet =
+      !hasCheckinSignal || checkinRatio >= 0.3
+        ? "✔ Show-up rate within expected range"
+        : "⚠ Check-in rate is low for current expected attendance";
+
+    return {
+      label: label,
+      bullets: [leadBullet, registrationBullet, showBullet]
+    };
+  }
+
+  function getNextActions() {
+    const event = getActiveEvent();
+    const planner = computePlanner();
+    const metrics = computeMetrics(event);
+    const actions = [];
+
+    if (planner.gapVsCurrentLeads > 0) {
+      actions.push("Add approximately " + planner.gapVsCurrentLeads + " more leads to reach target.");
+    }
+
+    const interestedCount = event.leads.filter(function (lead) {
+      return lead.status === "Interested";
+    }).length;
+    if (interestedCount > 0) {
+      actions.push("Increase follow-up touches for Interested leads.");
+    }
+
+    const confirmedCount = event.attendees.filter(function (attendee) {
+      return attendee.status === "Confirmed" || attendee.status === "Checked In";
+    }).length;
+    if (confirmedCount > 0) {
+      actions.push("Send day-before reminders to confirmed attendees.");
+    }
+
+    const unconfirmedRegistered = event.attendees.filter(function (attendee) {
+      return attendee.status === "Registered";
+    }).length;
+    if (unconfirmedRegistered > 0) {
+      actions.push("Call registered attendees who are not yet confirmed.");
+    }
+
+    const topCity = topPerformingCityByRegistrations(event);
+    if (topCity) {
+      actions.push("Focus outreach on the top-performing city: " + topCity.city + ".");
+    }
+
+    if (metrics.registrationToShowPct < 30 && metrics.expectedAttendance > 0) {
+      actions.push("Tighten same-day check-in reminders to reduce attendance leakage.");
+    }
+
+    if (actions.length < 3) {
+      actions.push("Review lead source mix and increase high-performing channel spend.");
+    }
+
+    return actions.slice(0, 5);
+  }
+
+  function renderOutcomeBanner() {
+    const planner = computePlanner();
+    els.outcomeBanner.textContent =
+      "This campaign is projected to generate " +
+      planner.projectedLow +
+      "-" +
+      planner.projectedHigh +
+      " attendees using approximately " +
+      planner.requiredLeads +
+      " leads across a 6-day outreach sequence.";
+  }
+
+  function renderCampaignCards() {
+    const status = getCampaignStatus();
+    const badgeClass = "status-chip " +
+      (status.label === "On Track"
+        ? "status-confirmed"
+        : status.label === "Needs More Leads"
+        ? "status-registered"
+        : status.label === "Registration Behind"
+        ? "status-interested"
+        : "status-contacted");
+
+    els.campaignStatusBadge.className = badgeClass;
+    els.campaignStatusBadge.textContent = status.label;
+    els.campaignStatusBullets.innerHTML = status.bullets
+      .map(function (bullet) {
+        return "<li>" + escapeHtml(bullet) + "</li>";
+      })
+      .join("");
+
+    const actions = getNextActions();
+    els.nextActionsList.innerHTML = actions
+      .map(function (action) {
+        return "<li>" + escapeHtml(action) + "</li>";
+      })
+      .join("");
   }
 
   function filteredLeads(event) {
@@ -542,8 +692,12 @@
 
     const topCity = topPerformingCityByRegistrations(event);
     els.topCityInsight.textContent = topCity
-      ? "Top performing city by registrations: " + topCity.city + " (" + topCity.registrations + ")"
-      : "Top performing city by registrations: Not enough attendee data yet";
+      ? "Top Performing City: " +
+        topCity.city +
+        " (" +
+        topCity.expectedAttendees +
+        " expected attendees). Prioritize follow-up and referrals in this city."
+      : "Top Performing City: Not enough attendee data yet.";
   }
 
   function renderLeadTable() {
@@ -748,11 +902,27 @@
     els.plannerShowRate.value = planner.showRatePct;
     els.plannerConversionRate.value = planner.conversionRatePct;
 
+    const attendanceGap = Math.max(planner.requiredRegistrations - planner.metrics.expectedAttendance, 0);
+    els.funnelTargetSummary.textContent =
+      "To fill " +
+      planner.targetAttendance +
+      " seats at a " +
+      planner.showRatePct +
+      "% show-up rate, this campaign needs about " +
+      planner.requiredRegistrations +
+      " registrations and " +
+      planner.requiredLeads +
+      " leads at a " +
+      planner.conversionRatePct +
+      "% lead-to-registration rate.";
+
     const cards = [
-      { label: "Required Registrations", value: planner.requiredRegistrations },
-      { label: "Required Leads", value: planner.requiredLeads },
-      { label: "Gap vs Current Leads", value: planner.gapVsCurrentLeads },
-      { label: "Gap vs Current Registered", value: planner.gapVsCurrentRegistered }
+      { label: "Leads Needed", value: planner.requiredLeads },
+      { label: "Current Leads", value: event.leads.length },
+      { label: "Lead Gap", value: planner.gapVsCurrentLeads },
+      { label: "Registrations Needed", value: planner.requiredRegistrations },
+      { label: "Current Expected Attendance", value: planner.metrics.expectedAttendance },
+      { label: "Attendance Gap", value: attendanceGap }
     ];
 
     els.campaignPlannerMetrics.innerHTML = cards
@@ -849,9 +1019,11 @@
     }
 
     renderTabs();
+    renderOutcomeBanner();
     renderEventSelector();
     renderEventForm();
     renderDashboard();
+    renderCampaignCards();
     renderPlanner();
     renderCitySegmentation();
     renderLeadTable();
@@ -1131,54 +1303,66 @@
       state.planner.showRate = clamp(toNumber(els.plannerShowRate.value) || DEFAULT_PLANNER.showRate, 1, 100);
       state.planner.conversionRate = clamp(toNumber(els.plannerConversionRate.value) || DEFAULT_PLANNER.conversionRate, 1, 100);
       saveState();
-      renderPlanner();
+      renderAll();
     }
 
     els.campaignPlannerForm.addEventListener("input", updatePlannerFromInputs);
     els.campaignPlannerForm.addEventListener("change", updatePlannerFromInputs);
   }
 
-  function buildExportPayload() {
+  function buildExportText() {
     const event = getActiveEvent();
     const planner = computePlanner();
-    return {
-      generatedAt: new Date().toISOString(),
-      event: {
-        id: event.id,
-        name: event.name,
-        date: event.date,
-        time: event.time,
-        location: event.location,
-        goal: event.goal,
-        topic: event.topic,
-        audienceNotes: event.audienceNotes
-      },
-      planner: {
-        targetAttendance: planner.targetAttendance,
-        showUpRatePercent: planner.showRatePct,
-        conversionRatePercent: planner.conversionRatePct,
-        requiredRegistrations: planner.requiredRegistrations,
-        requiredLeads: planner.requiredLeads,
-        gapVsCurrentLeads: planner.gapVsCurrentLeads,
-        gapVsCurrentRegistered: planner.gapVsCurrentRegistered
-      },
-      funnelTargets: planner.expectedFunnel,
-      outreachStrategy: {
-        leadSources: [
-          "Purchased opt-in lists",
-          "Local ads (55+ demographic)",
-          "Referral incentives",
-          "Community partnerships"
-        ],
-        outreachTimeline: [
-          "Day 1: AI Call Attempt",
-          "Day 2: SMS Follow-Up",
-          "Day 3: Voicemail (if compliant)",
-          "Day 5: Reminder SMS",
-          "Day 6: Confirmation Call"
-        ]
-      }
-    };
+    const metrics = computeMetrics(event);
+    const status = getCampaignStatus();
+    const nextActions = getNextActions();
+    const outreachSequence = [
+      "Day 1: AI Call Attempt",
+      "Day 2: SMS Follow-Up",
+      "Day 3: Voicemail (if compliant)",
+      "Day 5: Reminder SMS",
+      "Day 6: Confirmation Call"
+    ];
+
+    const lines = [
+      "Event Fill Campaign Plan",
+      "Generated: " + new Date().toISOString(),
+      "",
+      "Event",
+      "- Name: " + (event.name || "N/A"),
+      "- Date: " + (event.date || "N/A"),
+      "- Location: " + (event.location || "N/A"),
+      "- Attendance Goal: " + metrics.goal,
+      "",
+      "Current Performance",
+      "- Current Leads: " + metrics.totalLeads,
+      "- Expected Attendance: " + metrics.expectedAttendance,
+      "- Required Leads: " + planner.requiredLeads,
+      "- Required Registrations: " + planner.requiredRegistrations,
+      "- Campaign Status: " + status.label,
+      "",
+      "What To Do Next"
+    ];
+
+    nextActions.forEach(function (action) {
+      lines.push("- " + action);
+    });
+
+    lines.push("");
+    lines.push("Outreach Sequence");
+    outreachSequence.forEach(function (step) {
+      lines.push("- " + step);
+    });
+
+    lines.push("");
+    lines.push("Production Stack Summary");
+    lines.push("- n8n / Make automation");
+    lines.push("- Retell AI calling");
+    lines.push("- Twilio SMS");
+    lines.push("- Supabase DB");
+    lines.push("- CRM sync");
+
+    return lines.join("\n");
   }
 
   function bindHeaderActions() {
@@ -1209,13 +1393,12 @@
       if (!active) {
         return;
       }
-      const payload = buildExportPayload();
-      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      const textSummary = buildExportText();
+      const blob = new Blob([textSummary], { type: "text/plain" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
-      const slug = (active.name || "campaign-plan").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
       link.href = url;
-      link.download = (slug || "campaign-plan") + ".json";
+      link.download = "event-fill-campaign-plan.txt";
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -1238,6 +1421,81 @@
   function createDemoEvents() {
     const now = new Date().toISOString();
 
+    const firstNames = [
+      "Alicia", "Marcus", "Nina", "Robert", "Dana", "Steven", "Martha", "Trent", "Felicia", "Howard",
+      "Janet", "Peter", "Elaine", "Carlos", "Linda", "Derrick", "Grace", "Oscar", "Mina", "Tommy",
+      "Paula", "Brian", "Janelle", "Ibrahim", "Monica", "Victor", "Rachel", "Thomas", "Sonia", "Kevin"
+    ];
+    const lastNames = [
+      "Green", "Hill", "Patel", "Kim", "Lopez", "Cole", "Wells", "Dawson", "Romero", "Lin",
+      "Cruz", "Vaughn", "Brooks", "Benitez", "Ochoa", "Morgan", "Rivera", "Song", "Tate", "Ford",
+      "Khan", "Miles", "Turner", "Diaz", "Reyes", "Owens", "Grant", "Rice", "Yoon", "Parker"
+    ];
+    const cities = ["Austin", "Round Rock", "Cedar Park", "Pflugerville", "Georgetown", "Leander", "Buda", "Kyle"];
+    const conditions = [
+      "foot numbness", "tingling in toes", "balance concerns", "burning sensation", "leg discomfort",
+      "nighttime nerve pain", "ankle numbness", "pins and needles", "cold feet sensation", "mobility confidence"
+    ];
+    const statusByBucket = function (index) {
+      if (index < 60) {
+        return "New";
+      }
+      if (index < 120) {
+        return "Contacted";
+      }
+      if (index < 170) {
+        return "Interested";
+      }
+      if (index < 195) {
+        return "Registered";
+      }
+      if (index < 215) {
+        return "Confirmed";
+      }
+      if (index < 230) {
+        return "Checked In";
+      }
+      return "Not Interested";
+    };
+
+    const leads = [];
+    for (let i = 0; i < 240; i += 1) {
+      const first = firstNames[i % firstNames.length];
+      const last = lastNames[(i * 3) % lastNames.length];
+      const city = cities[i % cities.length];
+      const emailName = (first + "." + last + i).toLowerCase();
+      leads.push({
+        id: uid("lead"),
+        name: first + " " + last,
+        phone: "555-" + String(200 + (i % 700)).padStart(3, "0") + "-" + String(1000 + (i % 9000)).padStart(4, "0"),
+        email: emailName + "@example.com",
+        condition: conditions[i % conditions.length],
+        city: city,
+        status: statusByBucket(i),
+        notes: i % 9 === 0 ? "Preferred follow-up window: evenings" : "",
+        createdAt: now
+      });
+    }
+
+    const attendees = [];
+    for (let i = 0; i < 48; i += 1) {
+      const lead = leads[i * 2];
+      const status = i < 30 ? "Confirmed" : i < 40 ? "Checked In" : "Registered";
+      const checkedIn = status === "Checked In";
+      const guestCount = checkedIn && i < 38 ? 1 : 0;
+      attendees.push({
+        id: uid("att"),
+        name: lead.name,
+        phone: lead.phone,
+        email: lead.email,
+        guestCount: guestCount,
+        status: status,
+        checkedIn: checkedIn,
+        notes: checkedIn ? "Arrived and seated" : "Pending arrival",
+        createdAt: now
+      });
+    }
+
     const eventOne = normalizeEvent({
       id: uid("evt"),
       name: "Free Neuropathy Relief Seminar",
@@ -1247,27 +1505,35 @@
       goal: 75,
       topic: "Neuropathy-friendly lifestyle, movement, and nutrition education",
       audienceNotes: "Adults seeking educational guidance for nerve discomfort and mobility confidence.",
-      leads: [
-        { id: uid("lead"), name: "Alicia Green", phone: "555-201-1198", email: "alicia.green@example.com", condition: "foot numbness", city: "Austin", status: "Interested", notes: "Prefers evening calls", createdAt: now },
-        { id: uid("lead"), name: "Marcus Hill", phone: "555-334-8821", email: "marcus.hill@example.com", condition: "tingling in toes", city: "Round Rock", status: "Contacted", notes: "Requested text follow-up", createdAt: now },
-        { id: uid("lead"), name: "Nina Patel", phone: "555-717-2249", email: "nina.patel@example.com", condition: "balance concerns", city: "Cedar Park", status: "New", notes: "", createdAt: now },
-        { id: uid("lead"), name: "Robert Kim", phone: "555-888-7650", email: "robert.kim@example.com", condition: "burning sensation", city: "Austin", status: "Registered", notes: "", createdAt: now },
-        { id: uid("lead"), name: "Dana Lopez", phone: "555-901-4501", email: "dana.lopez@example.com", condition: "leg discomfort", city: "Pflugerville", status: "Confirmed", notes: "", createdAt: now },
-        { id: uid("lead"), name: "Steven Cole", phone: "555-112-0090", email: "steven.cole@example.com", condition: "nighttime nerve pain", city: "Georgetown", status: "Checked In", notes: "Arrives early", createdAt: now },
-        { id: uid("lead"), name: "Martha Wells", phone: "555-234-7744", email: "martha.wells@example.com", condition: "ankle numbness", city: "Austin", status: "Not Interested", notes: "Declined this month", createdAt: now },
-        { id: uid("lead"), name: "Trent Dawson", phone: "555-418-3002", email: "trent.dawson@example.com", condition: "tingling fingers", city: "Round Rock", status: "Contacted", notes: "Call after 5pm", createdAt: now },
-        { id: uid("lead"), name: "Felicia Romero", phone: "555-620-1174", email: "felicia.romero@example.com", condition: "cold feet sensation", city: "Buda", status: "Interested", notes: "", createdAt: now },
-        { id: uid("lead"), name: "Howard Lin", phone: "555-623-9955", email: "howard.lin@example.com", condition: "mobility confidence", city: "Leander", status: "New", notes: "", createdAt: now },
-        { id: uid("lead"), name: "Janet Cruz", phone: "555-730-4470", email: "janet.cruz@example.com", condition: "heel nerve discomfort", city: "Kyle", status: "Registered", notes: "", createdAt: now },
-        { id: uid("lead"), name: "Peter Vaughn", phone: "555-801-4451", email: "peter.vaughn@example.com", condition: "pins and needles", city: "Austin", status: "Contacted", notes: "Spouse may attend", createdAt: now }
-      ],
-      attendees: [
-        { id: uid("att"), name: "Robert Kim", phone: "555-888-7650", email: "robert.kim@example.com", guestCount: 1, status: "Registered", checkedIn: false, notes: "Bringing spouse", createdAt: now },
-        { id: uid("att"), name: "Dana Lopez", phone: "555-901-4501", email: "dana.lopez@example.com", guestCount: 0, status: "Confirmed", checkedIn: false, notes: "", createdAt: now },
-        { id: uid("att"), name: "Steven Cole", phone: "555-112-0090", email: "steven.cole@example.com", guestCount: 2, status: "Checked In", checkedIn: true, notes: "Needs front row seating", createdAt: now },
-        { id: uid("att"), name: "Janet Cruz", phone: "555-730-4470", email: "janet.cruz@example.com", guestCount: 1, status: "Registered", checkedIn: false, notes: "", createdAt: now },
-        { id: uid("att"), name: "Mila Porter", phone: "555-940-3099", email: "mila.porter@example.com", guestCount: 0, status: "Checked In", checkedIn: true, notes: "", createdAt: now }
-      ]
+      leads: leads,
+      attendees: attendees
+    });
+
+    const eventTwoLeads = leads.slice(0, 80).map(function (lead, idx) {
+      return {
+        id: uid("lead"),
+        name: lead.name,
+        phone: "555-77" + String(idx).padStart(2, "0") + "-" + String(1100 + idx).padStart(4, "0"),
+        email: "south." + idx + "@example.com",
+        condition: lead.condition,
+        city: cities[(idx + 2) % cities.length],
+        status: idx % 5 === 0 ? "Registered" : idx % 4 === 0 ? "Interested" : "Contacted",
+        createdAt: now
+      };
+    });
+
+    const eventTwoAttendees = eventTwoLeads.slice(0, 20).map(function (lead, idx) {
+      const status = idx < 8 ? "Confirmed" : idx < 12 ? "Checked In" : "Registered";
+      return {
+        id: uid("att"),
+        name: lead.name,
+        phone: lead.phone,
+        email: lead.email,
+        guestCount: idx % 6 === 0 ? 1 : 0,
+        status: status,
+        checkedIn: status === "Checked In",
+        createdAt: now
+      };
     });
 
     const eventTwo = normalizeEvent({
@@ -1279,18 +1545,8 @@
       goal: 60,
       topic: "Balance, nerve comfort, and confidence in movement",
       audienceNotes: "Adults 50+ in South Market and neighboring suburbs.",
-      leads: [
-        { id: uid("lead"), name: "Olivia Grant", phone: "555-321-1101", email: "olivia.grant@example.com", condition: "tingling feet", city: "South Market", status: "Interested", createdAt: now },
-        { id: uid("lead"), name: "Henry Cole", phone: "555-381-2204", email: "henry.cole@example.com", condition: "numb ankles", city: "South Market", status: "Contacted", createdAt: now },
-        { id: uid("lead"), name: "Maya Reyes", phone: "555-761-8800", email: "maya.reyes@example.com", condition: "burning toes", city: "Lakeview", status: "Registered", createdAt: now },
-        { id: uid("lead"), name: "Chris Owens", phone: "555-703-4122", email: "chris.owens@example.com", condition: "balance concerns", city: "Lakeview", status: "New", createdAt: now },
-        { id: uid("lead"), name: "Pat Rice", phone: "555-301-2218", email: "pat.rice@example.com", condition: "sensitive feet", city: "South Market", status: "Confirmed", createdAt: now },
-        { id: uid("lead"), name: "Rita Yoon", phone: "555-352-1882", email: "rita.yoon@example.com", condition: "leg tingling", city: "Brookfield", status: "Not Interested", createdAt: now }
-      ],
-      attendees: [
-        { id: uid("att"), name: "Maya Reyes", phone: "555-761-8800", email: "maya.reyes@example.com", guestCount: 1, status: "Registered", checkedIn: false, createdAt: now },
-        { id: uid("att"), name: "Pat Rice", phone: "555-301-2218", email: "pat.rice@example.com", guestCount: 0, status: "Confirmed", checkedIn: false, createdAt: now }
-      ]
+      leads: eventTwoLeads,
+      attendees: eventTwoAttendees
     });
 
     return [eventOne, eventTwo];
@@ -1306,7 +1562,7 @@
       showRate: DEFAULT_PLANNER.showRate,
       conversionRate: DEFAULT_PLANNER.conversionRate
     };
-    state.activeTab = "dashboard";
+    state.activeTab = "overview";
 
     saveState();
     renderAll();
