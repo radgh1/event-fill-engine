@@ -248,6 +248,11 @@ th {
   font-size: 0.82rem;
 }
 
+.status-chip.checked {
+  background: #daf3e8;
+  color: #0f6b48;
+}
+
 .script-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(240px, 1fr));
@@ -323,6 +328,30 @@ th {
   padding-left: 1rem;
 }
 
+.architecture-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(240px, 1fr));
+  gap: 0.8rem;
+}
+
+.architecture-item {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+  padding: 0.75rem;
+}
+
+.architecture-item h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.architecture-item p {
+  margin: 0.4rem 0 0;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
 .small-btn {
   padding: 0.35rem 0.55rem;
   border-radius: 7px;
@@ -338,7 +367,8 @@ th {
 
 @media (max-width: 900px) {
   .metric-grid,
-  .script-grid {
+  .script-grid,
+  .architecture-grid {
     grid-template-columns: repeat(2, minmax(160px, 1fr));
   }
 
@@ -354,7 +384,8 @@ th {
 
 @media (max-width: 620px) {
   .metric-grid,
-  .script-grid {
+  .script-grid,
+  .architecture-grid {
     grid-template-columns: 1fr;
   }
 

@@ -15,6 +15,7 @@
       </div>
       <div class="header-actions">
         <button id="loadDemoBtn" class="btn secondary" type="button">Load Demo Data</button>
+        <button id="resetDemoBtn" class="btn secondary" type="button">Reset Demo Data</button>
         <button id="clearDataBtn" class="btn danger" type="button">Clear All Data</button>
       </div>
     </div>
@@ -35,6 +36,14 @@
           <div id="goalProgressBar" class="goal-progress-fill"></div>
         </div>
       </div>
+    </section>
+
+    <section id="lead-calculator" class="card">
+      <div class="section-head">
+        <h2>Lead Calculator</h2>
+        <p>Estimate how many additional leads are needed to fill remaining seats.</p>
+      </div>
+      <div id="leadCalculatorGrid" class="metric-grid"></div>
     </section>
 
     <section id="event-setup" class="card">
@@ -192,7 +201,7 @@
       </div>
       <div class="checkin-tools">
         <input id="checkinSearchInput" type="search" placeholder="Search name or phone" />
-        <strong id="checkedInCount">Checked In: 0</strong>
+        <strong id="checkedInCount">Checked In: 0 / 0</strong>
       </div>
       <div id="checkinList" class="checkin-list"></div>
     </section>
@@ -203,6 +212,47 @@
       </div>
       <div id="analyticsGrid" class="metric-grid"></div>
       <div id="leadNeedPanel" class="lead-need-panel"></div>
+    </section>
+
+    <section id="architecture" class="card">
+      <div class="section-head">
+        <h2>System Architecture</h2>
+        <p>This MVP demonstrates the frontend layer of a production-ready event outreach system.</p>
+      </div>
+      <div class="architecture-grid">
+        <article class="architecture-item">
+          <h3>Vercel Frontend</h3>
+          <p>Static UI for operations, scripts, reminders, and check-in workflow.</p>
+        </article>
+        <article class="architecture-item">
+          <h3>Supabase Database</h3>
+          <p>Leads, events, attendees, and outreach history stored with auditability.</p>
+        </article>
+        <article class="architecture-item">
+          <h3>n8n or Make Automation</h3>
+          <p>Workflow orchestration for reminders, status updates, and reporting tasks.</p>
+        </article>
+        <article class="architecture-item">
+          <h3>Retell AI Calling</h3>
+          <p>Automated voice outreach for confirmations with configurable script flows.</p>
+        </article>
+        <article class="architecture-item">
+          <h3>Twilio SMS</h3>
+          <p>Consent-aware text reminders and response handling.</p>
+        </article>
+        <article class="architecture-item">
+          <h3>SendGrid or Postmark Email</h3>
+          <p>Email invites and reminders with delivery visibility.</p>
+        </article>
+        <article class="architecture-item">
+          <h3>CRM Integration</h3>
+          <p>Sync attendee lifecycle stages to external CRM systems.</p>
+        </article>
+        <article class="architecture-item">
+          <h3>Consent-Aware Outreach Logging</h3>
+          <p>Track consent source, channel, and message history to support compliant operations.</p>
+        </article>
+      </div>
     </section>
   </main>
 

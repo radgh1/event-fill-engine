@@ -56,8 +56,10 @@
 
     analyticsGrid: document.getElementById("analyticsGrid"),
     leadNeedPanel: document.getElementById("leadNeedPanel"),
+    leadCalculatorGrid: document.getElementById("leadCalculatorGrid"),
 
     loadDemoBtn: document.getElementById("loadDemoBtn"),
+    resetDemoBtn: document.getElementById("resetDemoBtn"),
     clearDataBtn: document.getElementById("clearDataBtn")
   };
 
@@ -600,11 +602,11 @@
     }
 
     if (attendee.status === "Registered") {
-      return ["Confirmation Call", "Reminder SMS", "Day-Before Reminder", "Day-Of Reminder"];
+      return ["Confirmation Call", "Day-Before Reminder", "Day-Of Reminder"];
     }
 
     if (attendee.status === "Confirmed") {
-      return ["Reminder SMS", "Day-Before Reminder", "Day-Of Reminder"];
+      return ["Day-Before Reminder", "Day-Of Reminder"];
     }
 
     return [];
@@ -693,7 +695,8 @@
     const checkedInCount = state.attendees.filter(function (attendee) {
       return attendee.checkedIn;
     }).length;
-    els.checkedInCount.textContent = "Checked In: " + checkedInCount;
+    const goal = Math.max(0, toNumber(state.event.goal));
+    els.checkedInCount.textContent = "Checked In: " + checkedInCount + " / " + goal;
 
     if (results.length === 0) {
       els.checkinList.innerHTML = "<div class=\"save-status\">No matching attendees.</div>";
@@ -703,7 +706,7 @@
     els.checkinList.innerHTML = results
       .map(function (attendee) {
         const buttonHtml = attendee.checkedIn
-          ? "<span class=\"status-chip\">Checked In</span>"
+          ? "<span class=\"status-chip checked\">Checked In</span>"
           : "<button class=\"small-btn success\" data-action=\"check-in\" data-id=\"" +
             escapeHtml(attendee.id) +
             "\" type=\"button\">Mark Checked In</button>";
@@ -772,7 +775,8 @@
       { label: "Registered Attendees", value: String(metrics.registered) },
       { label: "Confirmed Attendees", value: String(metrics.confirmed) },
       { label: "Checked-In Attendees", value: String(metrics.checkedIn) },
-      { label: "Target Attendance Goal", value: String(metrics.goal) }
+      { label: "Target Attendance Goal", value: String(metrics.goal) },
+      { label: "Seats Remaining", value: String(metrics.remainingSeats) }
     ];
 
     els.dashboardMetrics.innerHTML = metricList
@@ -845,100 +849,83 @@
       "</ul>";
   }
 
+  function renderLeadCalculator() {
+    const metrics = computeMetrics();
+    const remaining = metrics.remainingSeats;
+
+    const cards = [
+      { label: "Seats Remaining", value: String(remaining) },
+      { label: "Leads Needed at 20%", value: String(remaining > 0 ? Math.ceil(remaining / 0.2) : 0) },
+      { label: "Leads Needed at 30%", value: String(remaining > 0 ? Math.ceil(remaining / 0.3) : 0) },
+      { label: "Leads Needed at 40%", value: String(remaining > 0 ? Math.ceil(remaining / 0.4) : 0) }
+    ];
+
+    els.leadCalculatorGrid.innerHTML = cards
+      .map(function (card) {
+        return (
+          "<div class=\"metric\">" +
+          "<span class=\"label\">" +
+          escapeHtml(card.label) +
+          "</span>" +
+          "<span class=\"value\">" +
+          escapeHtml(card.value) +
+          "</span>" +
+          "</div>"
+        );
+      })
+      .join("");
+  }
+
   function loadDemoData() {
     const now = new Date().toISOString();
 
     state.event = {
-      name: "Healthy Living Community Night",
-      date: "2026-05-15",
-      time: "18:30",
-      location: "Westside Wellness Center",
-      goal: 40,
-      topic: "Nutrition, mobility, and heart health",
-      audienceNotes: "Adults 40+ seeking practical wellness education in a community setting."
+      name: "Free Neuropathy Relief Seminar",
+      date: "2026-06-04",
+      time: "19:00",
+      location: "Riverside Community Wellness Hall",
+      goal: 75,
+      topic: "Neuropathy-friendly lifestyle, movement, and nutrition education",
+      audienceNotes: "Adults seeking educational guidance for nerve discomfort and mobility confidence."
     };
 
     state.leads = [
-      {
-        id: uid("lead"),
-        name: "Alicia Green",
-        phone: "555-201-1198",
-        email: "alicia.green@example.com",
-        condition: "joint stiffness",
-        city: "Austin",
-        status: "Interested",
-        notes: "Prefers evening calls",
-        createdAt: now
-      },
-      {
-        id: uid("lead"),
-        name: "Marcus Hill",
-        phone: "555-334-8821",
-        email: "marcus.hill@example.com",
-        condition: "blood pressure management",
-        city: "Round Rock",
-        status: "Contacted",
-        notes: "Requested text follow-up",
-        createdAt: now
-      },
-      {
-        id: uid("lead"),
-        name: "Nina Patel",
-        phone: "555-717-2249",
-        email: "nina.patel@example.com",
-        condition: "weight management",
-        city: "Cedar Park",
-        status: "New",
-        notes: "",
-        createdAt: now
-      },
-      {
-        id: uid("lead"),
-        name: "Robert Kim",
-        phone: "555-888-7650",
-        email: "robert.kim@example.com",
-        condition: "sleep quality",
-        city: "Austin",
-        status: "Registered",
-        notes: "",
-        createdAt: now
-      }
+      { id: uid("lead"), name: "Alicia Green", phone: "555-201-1198", email: "alicia.green@example.com", condition: "foot numbness", city: "Austin", status: "Interested", notes: "Prefers evening calls", createdAt: now },
+      { id: uid("lead"), name: "Marcus Hill", phone: "555-334-8821", email: "marcus.hill@example.com", condition: "tingling in toes", city: "Round Rock", status: "Contacted", notes: "Requested text follow-up", createdAt: now },
+      { id: uid("lead"), name: "Nina Patel", phone: "555-717-2249", email: "nina.patel@example.com", condition: "balance concerns", city: "Cedar Park", status: "New", notes: "", createdAt: now },
+      { id: uid("lead"), name: "Robert Kim", phone: "555-888-7650", email: "robert.kim@example.com", condition: "burning sensation", city: "Austin", status: "Registered", notes: "", createdAt: now },
+      { id: uid("lead"), name: "Dana Lopez", phone: "555-901-4501", email: "dana.lopez@example.com", condition: "leg discomfort", city: "Pflugerville", status: "Confirmed", notes: "", createdAt: now },
+      { id: uid("lead"), name: "Steven Cole", phone: "555-112-0090", email: "steven.cole@example.com", condition: "nighttime nerve pain", city: "Georgetown", status: "Checked In", notes: "Arrives early", createdAt: now },
+      { id: uid("lead"), name: "Martha Wells", phone: "555-234-7744", email: "martha.wells@example.com", condition: "ankle numbness", city: "Austin", status: "Not Interested", notes: "Declined this month", createdAt: now },
+      { id: uid("lead"), name: "Trent Dawson", phone: "555-418-3002", email: "trent.dawson@example.com", condition: "tingling fingers", city: "Round Rock", status: "Contacted", notes: "Call after 5pm", createdAt: now },
+      { id: uid("lead"), name: "Felicia Romero", phone: "555-620-1174", email: "felicia.romero@example.com", condition: "cold feet sensation", city: "Buda", status: "Interested", notes: "", createdAt: now },
+      { id: uid("lead"), name: "Howard Lin", phone: "555-623-9955", email: "howard.lin@example.com", condition: "mobility confidence", city: "Leander", status: "New", notes: "", createdAt: now },
+      { id: uid("lead"), name: "Janet Cruz", phone: "555-730-4470", email: "janet.cruz@example.com", condition: "heel nerve discomfort", city: "Kyle", status: "Registered", notes: "", createdAt: now },
+      { id: uid("lead"), name: "Peter Vaughn", phone: "555-801-4451", email: "peter.vaughn@example.com", condition: "pins and needles", city: "Austin", status: "Contacted", notes: "Spouse may attend", createdAt: now },
+      { id: uid("lead"), name: "Elaine Brooks", phone: "555-816-2204", email: "elaine.brooks@example.com", condition: "calf numbness", city: "Cedar Park", status: "Confirmed", notes: "", createdAt: now },
+      { id: uid("lead"), name: "Carlos Benitez", phone: "555-903-1904", email: "carlos.benitez@example.com", condition: "foot sensitivity", city: "Round Rock", status: "Interested", notes: "", createdAt: now },
+      { id: uid("lead"), name: "Linda Ochoa", phone: "555-912-3419", email: "linda.ochoa@example.com", condition: "balance and stability", city: "Austin", status: "New", notes: "", createdAt: now },
+      { id: uid("lead"), name: "Derrick Hill", phone: "555-221-7804", email: "derrick.hill@example.com", condition: "leg tingling", city: "Pflugerville", status: "Not Interested", notes: "Requested no follow-up", createdAt: now },
+      { id: uid("lead"), name: "Grace Morgan", phone: "555-349-0022", email: "grace.morgan@example.com", condition: "toes numb in mornings", city: "Dripping Springs", status: "Contacted", notes: "", createdAt: now },
+      { id: uid("lead"), name: "Oscar Patel", phone: "555-412-6620", email: "oscar.patel@example.com", condition: "foot discomfort", city: "Austin", status: "Interested", notes: "", createdAt: now },
+      { id: uid("lead"), name: "Mina Shah", phone: "555-500-9171", email: "mina.shah@example.com", condition: "nerve sensitivity", city: "Round Rock", status: "New", notes: "", createdAt: now },
+      { id: uid("lead"), name: "Tommy Rivera", phone: "555-622-4812", email: "tommy.rivera@example.com", condition: "lower-leg burning", city: "Hutto", status: "Registered", notes: "", createdAt: now },
+      { id: uid("lead"), name: "Paula Song", phone: "555-711-0302", email: "paula.song@example.com", condition: "restless legs", city: "Austin", status: "Confirmed", notes: "", createdAt: now },
+      { id: uid("lead"), name: "Brian Tate", phone: "555-808-7713", email: "brian.tate@example.com", condition: "numbness after standing", city: "Cedar Park", status: "Contacted", notes: "", createdAt: now },
+      { id: uid("lead"), name: "Janelle Ford", phone: "555-844-9524", email: "janelle.ford@example.com", condition: "foot cramps", city: "Austin", status: "Interested", notes: "", createdAt: now },
+      { id: uid("lead"), name: "Ibrahim Khan", phone: "555-913-0408", email: "ibrahim.khan@example.com", condition: "ankle tingling", city: "Round Rock", status: "New", notes: "", createdAt: now }
     ];
 
     state.attendees = [
-      {
-        id: uid("att"),
-        name: "Robert Kim",
-        phone: "555-888-7650",
-        email: "robert.kim@example.com",
-        guestCount: 1,
-        status: "Registered",
-        checkedIn: false,
-        notes: "Bringing spouse",
-        createdAt: now
-      },
-      {
-        id: uid("att"),
-        name: "Dana Lopez",
-        phone: "555-901-4501",
-        email: "dana.lopez@example.com",
-        guestCount: 0,
-        status: "Confirmed",
-        checkedIn: false,
-        notes: "",
-        createdAt: now
-      },
-      {
-        id: uid("att"),
-        name: "Steven Cole",
-        phone: "555-112-0090",
-        email: "steven.cole@example.com",
-        guestCount: 2,
-        status: "Checked In",
-        checkedIn: true,
-        notes: "Needs front row seating",
-        createdAt: now
-      }
+      { id: uid("att"), name: "Robert Kim", phone: "555-888-7650", email: "robert.kim@example.com", guestCount: 1, status: "Registered", checkedIn: false, notes: "Bringing spouse", createdAt: now },
+      { id: uid("att"), name: "Dana Lopez", phone: "555-901-4501", email: "dana.lopez@example.com", guestCount: 0, status: "Confirmed", checkedIn: false, notes: "", createdAt: now },
+      { id: uid("att"), name: "Steven Cole", phone: "555-112-0090", email: "steven.cole@example.com", guestCount: 2, status: "Checked In", checkedIn: true, notes: "Needs front row seating", createdAt: now },
+      { id: uid("att"), name: "Janet Cruz", phone: "555-730-4470", email: "janet.cruz@example.com", guestCount: 1, status: "Registered", checkedIn: false, notes: "", createdAt: now },
+      { id: uid("att"), name: "Elaine Brooks", phone: "555-816-2204", email: "elaine.brooks@example.com", guestCount: 0, status: "Confirmed", checkedIn: false, notes: "", createdAt: now },
+      { id: uid("att"), name: "Tommy Rivera", phone: "555-622-4812", email: "tommy.rivera@example.com", guestCount: 1, status: "Registered", checkedIn: false, notes: "", createdAt: now },
+      { id: uid("att"), name: "Paula Song", phone: "555-711-0302", email: "paula.song@example.com", guestCount: 0, status: "Confirmed", checkedIn: false, notes: "", createdAt: now },
+      { id: uid("att"), name: "Mila Porter", phone: "555-940-3099", email: "mila.porter@example.com", guestCount: 0, status: "Checked In", checkedIn: true, notes: "", createdAt: now },
+      { id: uid("att"), name: "Garry Holmes", phone: "555-947-1221", email: "garry.holmes@example.com", guestCount: 2, status: "Checked In", checkedIn: true, notes: "", createdAt: now }
     ];
 
     state.selectedLeadId = state.leads[0] ? state.leads[0].id : null;
@@ -949,6 +936,11 @@
   function bindGlobalActions() {
     els.loadDemoBtn.addEventListener("click", function () {
       loadDemoData();
+    });
+
+    els.resetDemoBtn.addEventListener("click", function () {
+      loadDemoData();
+      setStatusText(els.eventSaveStatus, "Demo dataset reset.", 1500);
     });
 
     els.clearDataBtn.addEventListener("click", function () {
@@ -989,6 +981,7 @@
   function renderAll() {
     renderEventFormFromState();
     renderDashboard();
+    renderLeadCalculator();
     renderLeadTable();
     renderScriptSection();
     renderAttendeesTable();
