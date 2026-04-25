@@ -422,8 +422,18 @@
 
     // Current-trajectory: what the actual lead count is expected to produce in attendees
     const currentProjectedRegistrations = Math.floor(event.leads.length * conversionRate);
-    const currentProjectedLow = Math.floor(currentProjectedRegistrations * showRate * 0.75);
-    const currentProjectedHigh = Math.ceil(currentProjectedRegistrations * showRate);
+    const currentProjectedLowRaw = Math.floor(currentProjectedRegistrations * showRate * 0.75);
+    const currentProjectedHighRaw = Math.ceil(currentProjectedRegistrations * showRate);
+    // Never show a projected range lower than what is already confirmed via attendees
+    const currentProjectedLow = Math.max(currentProjectedLowRaw, metrics.expectedAttendance);
+    const currentProjectedHigh = Math.max(currentProjectedHighRaw, metrics.expectedAttendance);
+
+    // Lead needs to close the gap to goal, using high and low conversion rate assumptions
+    const highConversionRate = conversionRate;
+    const lowConversionRate = Math.max(conversionRate * 0.75, 0.01);
+    const seatsRemaining = metrics.seatsRemaining;
+    const lowLeadNeed = seatsRemaining > 0 ? Math.ceil(seatsRemaining / highConversionRate) : 0;
+    const highLeadNeed = seatsRemaining > 0 ? Math.ceil(seatsRemaining / lowConversionRate) : 0;
 
     const gapVsCurrentLeads = Math.max(requiredLeads - event.leads.length, 0);
     const gapVsCurrentRegistered = Math.max(requiredRegistrations - event.attendees.length, 0);
@@ -441,6 +451,8 @@
       projectedHigh: projectedHigh,
       currentProjectedLow: currentProjectedLow,
       currentProjectedHigh: currentProjectedHigh,
+      lowLeadNeed: lowLeadNeed,
+      highLeadNeed: highLeadNeed,
       gapVsCurrentLeads: gapVsCurrentLeads,
       gapVsCurrentRegistered: gapVsCurrentRegistered,
       expectedFunnel: {
@@ -499,38 +511,39 @@
   function getCampaignStatus() {
     const event = getActiveEvent();
     const planner = computePlanner();
-    const metrics = computeMetrics(event);
+    const metrics = planner.metrics; // use same metrics as banner
 
-    const hasCheckinSignal = metrics.expectedAttendance > 0;
+    const seatsRemaining = metrics.seatsRemaining;
+    const expectedAttendance = metrics.expectedAttendance;
+    const hasCheckinSignal = expectedAttendance > 0;
     const checkinRatio = hasCheckinSignal
-      ? metrics.checkedInHeadcount / metrics.expectedAttendance
+      ? metrics.checkedInHeadcount / expectedAttendance
       : 0;
 
-    let label = "On Track";
-    if (planner.currentProjectedHigh >= planner.targetAttendance * 1.1) {
+    let label;
+    if (seatsRemaining === 0 && expectedAttendance > metrics.goal) {
       label = "Above Target";
-    } else if (planner.currentProjectedHigh >= planner.targetAttendance) {
+    } else if (seatsRemaining === 0) {
       label = "On Track";
-    } else if (planner.currentProjectedHigh < planner.targetAttendance) {
+    } else if (planner.currentProjectedHigh >= planner.targetAttendance) {
+      label = seatsRemaining === 0 ? "On Track" : "On Track";
+    } else {
       label = "Needs More Leads";
     }
-    // Refine downward only if registrations or check-in are lagging
-    if (label !== "Needs More Leads" && metrics.expectedAttendance < planner.requiredRegistrations) {
-      label = "Registration Behind";
-    }
+    // Refine downward only when not already in a "needs leads" state
     if (label !== "Needs More Leads" && hasCheckinSignal && checkinRatio < 0.3) {
       label = "Check-In Risk";
     }
 
     const leadBullet =
-      planner.currentProjectedHigh >= planner.targetAttendance
-        ? planner.currentProjectedHigh >= planner.targetAttendance * 1.1
-          ? "✔ Lead volume exceeds goal — above target trajectory"
-          : "✔ Lead volume sufficient for target attendance"
-        : "⚠ Lead volume below target by " + (planner.requiredLeads - event.leads.length) + " leads";
+      seatsRemaining === 0
+        ? "✔ Registrations meet attendance goal"
+        : planner.currentProjectedHigh >= planner.targetAttendance
+        ? "✔ Lead volume sufficient for target attendance"
+        : "⚠ Approximately " + planner.lowLeadNeed + "–" + planner.highLeadNeed + " more leads needed to fill remaining " + seatsRemaining + " seat" + (seatsRemaining === 1 ? "" : "s");
 
     const registrationBullet =
-      metrics.expectedAttendance >= planner.requiredRegistrations
+      expectedAttendance >= planner.requiredRegistrations
         ? "✔ Registration pacing meets projection"
         : "⚠ Registration slightly behind target";
 
@@ -594,22 +607,33 @@
 
   function renderOutcomeBanner() {
     const planner = computePlanner();
-    const low = planner.currentProjectedLow;
-    const high = planner.currentProjectedHigh;
-    const rangeText = low === high ? String(high) : low + "–" + high;
-    els.outcomeBanner.textContent =
-      "Based on your current " +
-      planner.metrics.totalLeads +
-      " leads, this campaign is projected to generate " +
-      rangeText +
-      " attendees. Target: " +
-      planner.targetAttendance +
-      " — " +
-      (high >= planner.targetAttendance
-        ? high >= Math.ceil(planner.targetAttendance * 1.1)
-          ? "you are on pace to exceed your goal."
-          : "you are on pace to meet your goal."
-        : "add approximately " + (planner.requiredLeads - planner.metrics.totalLeads) + " more leads to close the gap.") ;
+    const metrics = planner.metrics;
+    const expectedAttendance = metrics.expectedAttendance;
+    const goal = metrics.goal;
+    const seatsRemaining = metrics.seatsRemaining;
+
+    let text =
+      "Current expected attendance is " +
+      expectedAttendance +
+      " of " +
+      goal +
+      " seats. " +
+      seatsRemaining +
+      " seat" + (seatsRemaining === 1 ? "" : "s") + " remain.";
+
+    if (seatsRemaining > 0) {
+      const low = planner.lowLeadNeed;
+      const high = planner.highLeadNeed;
+      const rangeText = low === high ? String(low) : low + "–" + high;
+      text +=
+        " Based on the selected lead-to-registration assumptions, add approximately " +
+        rangeText +
+        " more qualified leads to close the gap.";
+    } else {
+      text += " Your current registrations meet or exceed the attendance goal.";
+    }
+
+    els.outcomeBanner.textContent = text;
   }
 
   function renderCampaignCards() {
