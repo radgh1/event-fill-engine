@@ -697,9 +697,12 @@
       );
     });
 
-    const checkedInCount = state.attendees.filter(function (attendee) {
-      return attendee.checkedIn;
-    }).length;
+    const checkedInCount = state.attendees.reduce(function (sum, attendee) {
+      if (!attendee.checkedIn) {
+        return sum;
+      }
+      return sum + 1 + Math.max(0, toNumber(attendee.guestCount));
+    }, 0);
     const goal = Math.max(0, toNumber(state.event.goal));
     els.checkedInCount.textContent = "Checked In: " + checkedInCount + " / " + goal;
 
@@ -754,9 +757,15 @@
     const confirmed = state.attendees.filter(function (attendee) {
       return attendee.status === "Confirmed" || attendee.status === "Checked In";
     }).length;
-    const checkedIn = state.attendees.filter(function (attendee) {
-      return attendee.checkedIn;
-    }).length;
+    const expectedAttendance = state.attendees.reduce(function (sum, attendee) {
+      return sum + 1 + Math.max(0, toNumber(attendee.guestCount));
+    }, 0);
+    const checkedIn = state.attendees.reduce(function (sum, attendee) {
+      if (!attendee.checkedIn) {
+        return sum;
+      }
+      return sum + 1 + Math.max(0, toNumber(attendee.guestCount));
+    }, 0);
     const goal = toNumber(state.event.goal);
 
     return {
@@ -764,11 +773,12 @@
       registered: registered,
       confirmed: confirmed,
       checkedIn: checkedIn,
+      expectedAttendance: expectedAttendance,
       goal: goal,
-      progressPct: goal > 0 ? clamp(Math.round((checkedIn / goal) * 100), 0, 100) : 0,
+      progressPct: goal > 0 ? clamp(Math.round((expectedAttendance / goal) * 100), 0, 100) : 0,
       leadToRegistrationRate: totalLeads > 0 ? (registered / totalLeads) * 100 : 0,
-      registrationToCheckinRate: registered > 0 ? (checkedIn / registered) * 100 : 0,
-      remainingSeats: Math.max(goal - checkedIn, 0)
+      registrationToCheckinRate: expectedAttendance > 0 ? (checkedIn / expectedAttendance) * 100 : 0,
+      remainingSeats: Math.max(goal - expectedAttendance, 0)
     };
   }
 
