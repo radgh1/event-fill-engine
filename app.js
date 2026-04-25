@@ -112,7 +112,7 @@
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) {
-        return;
+        return false;
       }
       const parsed = JSON.parse(raw);
       if (parsed && typeof parsed === "object") {
@@ -159,9 +159,14 @@
               };
             })
           : [];
+
+        return true;
       }
+
+      return false;
     } catch (_error) {
       localStorage.removeItem(STORAGE_KEY);
+      return false;
     }
   }
 
@@ -991,7 +996,7 @@
   }
 
   function init() {
-    loadState();
+    const hasStoredState = loadState();
     bindEventForm();
     bindLeadImport();
     bindLeadTableActions();
@@ -1000,12 +1005,13 @@
     bindCheckinActions();
     bindGlobalActions();
 
-    renderAll();
-
-    // Demo mode seed for first run to make evaluation easier.
-    if (state.leads.length === 0 && state.attendees.length === 0 && !state.event.name) {
+    // Auto-seed realistic demo data on first visit when storage is empty.
+    if (!hasStoredState) {
       loadDemoData();
+      return;
     }
+
+    renderAll();
   }
 
   init();
