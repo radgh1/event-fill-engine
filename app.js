@@ -420,6 +420,11 @@
     const projectedLow = Math.floor(requiredRegistrations * 0.75);
     const projectedHigh = Math.ceil(requiredRegistrations * 1.0);
 
+    // Current-trajectory: what the actual lead count is expected to produce in attendees
+    const currentProjectedRegistrations = Math.floor(event.leads.length * conversionRate);
+    const currentProjectedLow = Math.floor(currentProjectedRegistrations * showRate * 0.75);
+    const currentProjectedHigh = Math.ceil(currentProjectedRegistrations * showRate);
+
     const gapVsCurrentLeads = Math.max(requiredLeads - event.leads.length, 0);
     const gapVsCurrentRegistered = Math.max(requiredRegistrations - event.attendees.length, 0);
 
@@ -434,6 +439,8 @@
       requiredLeads: requiredLeads,
       projectedLow: projectedLow,
       projectedHigh: projectedHigh,
+      currentProjectedLow: currentProjectedLow,
+      currentProjectedHigh: currentProjectedHigh,
       gapVsCurrentLeads: gapVsCurrentLeads,
       gapVsCurrentRegistered: gapVsCurrentRegistered,
       expectedFunnel: {
@@ -500,18 +507,27 @@
       : 0;
 
     let label = "On Track";
-    if (event.leads.length < planner.requiredLeads) {
+    if (planner.currentProjectedHigh >= planner.targetAttendance * 1.1) {
+      label = "Above Target";
+    } else if (planner.currentProjectedHigh >= planner.targetAttendance) {
+      label = "On Track";
+    } else if (planner.currentProjectedHigh < planner.targetAttendance) {
       label = "Needs More Leads";
-    } else if (metrics.expectedAttendance < planner.requiredRegistrations) {
+    }
+    // Refine downward only if registrations or check-in are lagging
+    if (label !== "Needs More Leads" && metrics.expectedAttendance < planner.requiredRegistrations) {
       label = "Registration Behind";
-    } else if (hasCheckinSignal && checkinRatio < 0.3) {
+    }
+    if (label !== "Needs More Leads" && hasCheckinSignal && checkinRatio < 0.3) {
       label = "Check-In Risk";
     }
 
     const leadBullet =
-      event.leads.length >= planner.requiredLeads
-        ? "✔ Lead volume sufficient"
-        : "⚠ Lead volume below target by " + (planner.requiredLeads - event.leads.length);
+      planner.currentProjectedHigh >= planner.targetAttendance
+        ? planner.currentProjectedHigh >= planner.targetAttendance * 1.1
+          ? "✔ Lead volume exceeds goal — above target trajectory"
+          : "✔ Lead volume sufficient for target attendance"
+        : "⚠ Lead volume below target by " + (planner.requiredLeads - event.leads.length) + " leads";
 
     const registrationBullet =
       metrics.expectedAttendance >= planner.requiredRegistrations
@@ -578,20 +594,30 @@
 
   function renderOutcomeBanner() {
     const planner = computePlanner();
+    const low = planner.currentProjectedLow;
+    const high = planner.currentProjectedHigh;
+    const rangeText = low === high ? String(high) : low + "–" + high;
     els.outcomeBanner.textContent =
-      "This campaign is projected to generate " +
-      planner.projectedLow +
-      "-" +
-      planner.projectedHigh +
-      " attendees using approximately " +
-      planner.requiredLeads +
-      " leads across a 6-day outreach sequence.";
+      "Based on your current " +
+      planner.metrics.totalLeads +
+      " leads, this campaign is projected to generate " +
+      rangeText +
+      " attendees. Target: " +
+      planner.targetAttendance +
+      " — " +
+      (high >= planner.targetAttendance
+        ? high >= Math.ceil(planner.targetAttendance * 1.1)
+          ? "you are on pace to exceed your goal."
+          : "you are on pace to meet your goal."
+        : "add approximately " + (planner.requiredLeads - planner.metrics.totalLeads) + " more leads to close the gap.") ;
   }
 
   function renderCampaignCards() {
     const status = getCampaignStatus();
     const badgeClass = "status-chip " +
-      (status.label === "On Track"
+      (status.label === "Above Target"
+        ? "status-checked-in"
+        : status.label === "On Track"
         ? "status-confirmed"
         : status.label === "Needs More Leads"
         ? "status-registered"
