@@ -11,250 +11,332 @@
     <div class="container header-row">
       <div>
         <h1>Event Fill Engine</h1>
-        <p class="subtitle">Compliant outreach, registration, reminders, and check-in for health events.</p>
+        <p class="subtitle">Campaign-oriented planning and event execution for repeatable room fill across cities.</p>
       </div>
-      <div class="header-actions">
-        <button id="loadDemoBtn" class="btn secondary" type="button">Load Demo Data</button>
-        <button id="resetDemoBtn" class="btn secondary" type="button">Reset Demo Data</button>
-        <button id="clearDataBtn" class="btn danger" type="button">Clear All Data</button>
+      <div class="header-tools">
+        <div class="event-switcher">
+          <label for="eventSelector">Active Event</label>
+          <select id="eventSelector"></select>
+          <button id="newEventBtn" class="btn secondary" type="button">Create New Event</button>
+        </div>
+        <div class="header-actions">
+          <button id="exportPlanBtn" class="btn" type="button">Export Campaign Plan</button>
+          <button id="loadDemoBtn" class="btn secondary" type="button">Load Demo Data</button>
+          <button id="resetDemoBtn" class="btn secondary" type="button">Reset Demo Data</button>
+          <button id="clearDataBtn" class="btn danger" type="button">Clear All Data</button>
+        </div>
       </div>
     </div>
   </header>
 
+  <nav class="top-nav" aria-label="Primary">
+    <div class="container nav-row">
+      <div class="tab-list" id="tabList">
+        <button class="tab-btn active" data-tab="dashboard" type="button">Dashboard</button>
+        <button class="tab-btn" data-tab="leads" type="button">Leads</button>
+        <button class="tab-btn" data-tab="campaign" type="button">Campaign Planner</button>
+        <button class="tab-btn" data-tab="registration" type="button">Registration</button>
+        <button class="tab-btn" data-tab="checkin" type="button">Check-In</button>
+        <button class="tab-btn" data-tab="analytics" type="button">Analytics</button>
+      </div>
+      <button id="readyBadge" class="ready-badge" type="button" aria-haspopup="dialog">
+        Prototype -> Production Ready Architecture
+      </button>
+    </div>
+  </nav>
+
   <main class="container">
-    <section id="dashboard" class="card">
-      <div class="section-head">
-        <h2>Dashboard</h2>
-      </div>
-      <div class="metric-grid" id="dashboardMetrics"></div>
-      <div class="goal-progress-wrap">
-        <div class="goal-progress-label">
-          <span>Progress Toward Goal</span>
-          <span id="goalProgressText">0%</span>
+    <section class="tab-panel active" data-panel="dashboard">
+      <section id="dashboard" class="card">
+        <div class="section-head">
+          <h2>Dashboard</h2>
         </div>
-        <div class="goal-progress-track" role="progressbar" aria-label="Attendance progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
-          <div id="goalProgressBar" class="goal-progress-fill"></div>
+        <div class="metric-grid" id="dashboardMetrics"></div>
+        <div class="goal-progress-wrap">
+          <div class="goal-progress-label">
+            <span>Progress Toward Goal</span>
+            <span id="goalProgressText">0%</span>
+          </div>
+          <div class="goal-progress-track" role="progressbar" aria-label="Attendance progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+            <div id="goalProgressBar" class="goal-progress-fill"></div>
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <section id="lead-calculator" class="card">
-      <div class="section-head">
-        <h2>Lead Calculator</h2>
-        <p>Estimate how many additional leads are needed to fill remaining seats.</p>
-      </div>
-      <div id="leadCalculatorGrid" class="metric-grid"></div>
-    </section>
-
-    <section id="event-setup" class="card">
-      <div class="section-head">
-        <h2>Event Setup</h2>
-      </div>
-      <form id="eventForm" class="form-grid">
-        <label>
-          Event Name
-          <input type="text" name="name" required />
-        </label>
-        <label>
-          Date
-          <input type="date" name="date" required />
-        </label>
-        <label>
-          Time
-          <input type="time" name="time" required />
-        </label>
-        <label>
-          Location
-          <input type="text" name="location" required />
-        </label>
-        <label>
-          Attendance Goal
-          <input type="number" name="goal" min="0" step="1" required />
-        </label>
-        <label>
-          Offer / Topic
-          <input type="text" name="topic" />
-        </label>
-        <label class="full-width">
-          Target Audience Notes
-          <textarea name="audienceNotes" rows="3"></textarea>
-        </label>
-        <div class="full-width action-row">
-          <button class="btn" type="submit">Save Event</button>
-          <span id="eventSaveStatus" class="save-status" aria-live="polite"></span>
+      <section id="event-setup" class="card">
+        <div class="section-head">
+          <h2>Event Setup</h2>
         </div>
-      </form>
+        <form id="eventForm" class="form-grid">
+          <label>
+            Event Name
+            <input type="text" name="name" required />
+          </label>
+          <label>
+            Date
+            <input type="date" name="date" required />
+          </label>
+          <label>
+            Time
+            <input type="time" name="time" required />
+          </label>
+          <label>
+            Location
+            <input type="text" name="location" required />
+          </label>
+          <label>
+            Attendance Goal
+            <input type="number" name="goal" min="0" step="1" required />
+          </label>
+          <label>
+            Offer / Topic
+            <input type="text" name="topic" />
+          </label>
+          <label class="full-width">
+            Target Audience Notes
+            <textarea name="audienceNotes" rows="3"></textarea>
+          </label>
+          <div class="full-width action-row">
+            <button class="btn" type="submit">Save Event</button>
+            <span id="eventSaveStatus" class="save-status" aria-live="polite"></span>
+          </div>
+        </form>
+      </section>
     </section>
 
-    <section id="lead-import" class="card">
-      <div class="section-head">
-        <h2>Lead Import</h2>
-        <p>Paste CSV style lines: name, phone, email, condition, city, status</p>
-      </div>
-      <form id="leadImportForm" class="stack">
-        <textarea id="leadCsvInput" rows="7" placeholder="Jane Smith, 555-123-9999, jane@example.com, joint pain, Austin, New"></textarea>
-        <div class="action-row">
-          <button class="btn" type="submit">Import Leads</button>
-          <span id="leadImportStatus" class="save-status" aria-live="polite"></span>
+    <section class="tab-panel" data-panel="leads">
+      <section id="lead-import" class="card">
+        <div class="section-head">
+          <h2>Leads</h2>
+          <p>Paste CSV style lines: name, phone, email, condition, city, status</p>
         </div>
-      </form>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Phone</th>
-              <th>Email</th>
-              <th>Condition</th>
-              <th>City</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody id="leadsTableBody"></tbody>
-        </table>
-      </div>
-    </section>
+        <form id="leadImportForm" class="stack">
+          <textarea id="leadCsvInput" rows="7" placeholder="Jane Smith, 555-123-9999, jane@example.com, joint pain, Austin, New"></textarea>
+          <div class="action-row">
+            <button class="btn" type="submit">Import Leads</button>
+            <span id="leadImportStatus" class="save-status" aria-live="polite"></span>
+          </div>
+        </form>
+      </section>
 
-    <section id="scripts" class="card">
-      <div class="section-head">
-        <h2>Outreach Script Generator</h2>
-        <p id="scriptLeadLabel">Select a lead from the table to generate compliant scripts.</p>
-      </div>
-      <div id="scriptsOutput" class="script-grid empty-state">
-        <p>No lead selected yet.</p>
-      </div>
-    </section>
-
-    <section id="registration" class="card">
-      <div class="section-head">
-        <h2>Registration</h2>
-      </div>
-      <form id="attendeeForm" class="form-grid">
-        <label>
-          Name
-          <input name="name" type="text" required />
-        </label>
-        <label>
-          Phone
-          <input name="phone" type="tel" required />
-        </label>
-        <label>
-          Email
-          <input name="email" type="email" />
-        </label>
-        <label>
-          Guest Count
-          <input name="guestCount" type="number" min="0" step="1" value="0" required />
-        </label>
-        <label class="full-width">
-          Notes
-          <textarea name="notes" rows="2"></textarea>
-        </label>
-        <div class="full-width action-row">
-          <button class="btn" type="submit">Register Attendee</button>
-          <span id="attendeeSaveStatus" class="save-status" aria-live="polite"></span>
+      <section id="geo-segmentation" class="card">
+        <div class="section-head">
+          <h2>Geo Segmentation</h2>
+          <p>Filter lead table by city and monitor where registrations are strongest.</p>
         </div>
-      </form>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Phone</th>
-              <th>Email</th>
-              <th>Guests</th>
-              <th>Status</th>
-              <th>Checked In</th>
-              <th>Notes</th>
-            </tr>
-          </thead>
-          <tbody id="attendeesTableBody"></tbody>
-        </table>
-      </div>
+        <div class="geo-row">
+          <label>
+            Filter City
+            <select id="cityFilterSelect"></select>
+          </label>
+          <div id="topCityInsight" class="insight-pill"></div>
+        </div>
+        <div id="cityCounts" class="city-counts"></div>
+      </section>
+
+      <section class="card">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Phone</th>
+                <th>Email</th>
+                <th>Condition</th>
+                <th>City</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="leadsTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="scripts" class="card">
+        <div class="section-head">
+          <h2>Outreach Script Generator</h2>
+          <p id="scriptLeadLabel">Select a lead from the table to generate compliant scripts.</p>
+        </div>
+        <div id="scriptsOutput" class="script-grid empty-state">
+          <p>No lead selected yet.</p>
+        </div>
+      </section>
+
+      <section id="reminders" class="card">
+        <div class="section-head">
+          <h2>Reminder Queue</h2>
+          <p>Attendees who need confirmation and reminder outreach.</p>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Attendee</th>
+                <th>Status</th>
+                <th>Needs</th>
+                <th>Reminder Copy</th>
+              </tr>
+            </thead>
+            <tbody id="reminderTableBody"></tbody>
+          </table>
+        </div>
+      </section>
     </section>
 
-    <section id="reminders" class="card">
-      <div class="section-head">
-        <h2>Reminder Queue</h2>
-        <p>Attendees who need confirmation and reminder outreach.</p>
-      </div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Attendee</th>
-              <th>Status</th>
-              <th>Needs</th>
-              <th>Reminder Copy</th>
-            </tr>
-          </thead>
-          <tbody id="reminderTableBody"></tbody>
-        </table>
-      </div>
+    <section class="tab-panel" data-panel="campaign">
+      <section id="campaign-planner" class="card">
+        <div class="section-head">
+          <h2>Campaign Planner</h2>
+          <p>Plan target outcomes and identify funnel gaps before outreach starts.</p>
+        </div>
+        <form id="campaignPlannerForm" class="form-grid">
+          <label>
+            Target Attendance
+            <input id="plannerTargetAttendance" type="number" min="1" step="1" value="75" />
+          </label>
+          <label>
+            Expected Show-Up Rate (%)
+            <input id="plannerShowRate" type="number" min="1" max="100" step="1" value="60" />
+          </label>
+          <label>
+            Lead-to-Registration Conversion Rate (%)
+            <input id="plannerConversionRate" type="number" min="1" max="100" step="1" value="25" />
+          </label>
+        </form>
+        <div id="campaignPlannerMetrics" class="metric-grid"></div>
+        <div id="campaignFunnel" class="funnel"></div>
+      </section>
+
+      <section id="strategy-block" class="card">
+        <div class="section-head">
+          <h2>Campaign Strategy Recommendation</h2>
+        </div>
+        <div class="strategy-grid">
+          <article class="strategy-card">
+            <h3>Lead Sources</h3>
+            <ul>
+              <li>Purchased opt-in lists</li>
+              <li>Local ads (55+ demographic)</li>
+              <li>Referral incentives</li>
+              <li>Community partnerships</li>
+            </ul>
+          </article>
+          <article class="strategy-card">
+            <h3>Outreach Sequence Timeline</h3>
+            <ul>
+              <li>Day 1: AI Call Attempt</li>
+              <li>Day 2: SMS Follow-Up</li>
+              <li>Day 3: Voicemail (if compliant)</li>
+              <li>Day 5: Reminder SMS</li>
+              <li>Day 6: Confirmation Call</li>
+            </ul>
+          </article>
+          <article class="strategy-card full-width">
+            <h3>Expected Funnel (Based on Inputs)</h3>
+            <div id="expectedFunnelOutput" class="funnel-output"></div>
+          </article>
+        </div>
+      </section>
     </section>
 
-    <section id="check-in" class="card">
-      <div class="section-head">
-        <h2>Check-In Mode</h2>
-        <p>Mobile-friendly door screen: search and check in attendees quickly.</p>
-      </div>
-      <div class="checkin-tools">
-        <input id="checkinSearchInput" type="search" placeholder="Search name or phone" />
-        <strong id="checkedInCount">Checked In: 0 / 0</strong>
-      </div>
-      <div id="checkinList" class="checkin-list"></div>
+    <section class="tab-panel" data-panel="registration">
+      <section id="registration" class="card">
+        <div class="section-head">
+          <h2>Registration</h2>
+        </div>
+        <form id="attendeeForm" class="form-grid">
+          <label>
+            Name
+            <input name="name" type="text" required />
+          </label>
+          <label>
+            Phone
+            <input name="phone" type="tel" required />
+          </label>
+          <label>
+            Email
+            <input name="email" type="email" />
+          </label>
+          <label>
+            Guest Count
+            <input name="guestCount" type="number" min="0" step="1" value="0" required />
+          </label>
+          <label class="full-width">
+            Notes
+            <textarea name="notes" rows="2"></textarea>
+          </label>
+          <div class="full-width action-row">
+            <button class="btn" type="submit">Register Attendee</button>
+            <span id="attendeeSaveStatus" class="save-status" aria-live="polite"></span>
+          </div>
+        </form>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Phone</th>
+                <th>Email</th>
+                <th>Guests</th>
+                <th>Status</th>
+                <th>Checked In</th>
+                <th>Notes</th>
+              </tr>
+            </thead>
+            <tbody id="attendeesTableBody"></tbody>
+          </table>
+        </div>
+      </section>
     </section>
 
-    <section id="analytics" class="card">
-      <div class="section-head">
-        <h2>Analytics</h2>
-      </div>
-      <div id="analyticsGrid" class="metric-grid"></div>
-      <div id="leadNeedPanel" class="lead-need-panel"></div>
+    <section class="tab-panel" data-panel="checkin">
+      <section id="check-in" class="card">
+        <div class="section-head">
+          <h2>Check-In Mode</h2>
+          <p>Mobile-friendly door screen: search and check in attendees quickly.</p>
+        </div>
+        <div class="checkin-tools">
+          <input id="checkinSearchInput" type="search" placeholder="Search name or phone" />
+          <strong id="checkedInCount">Checked In: 0 / 0</strong>
+        </div>
+        <div id="checkinList" class="checkin-list"></div>
+      </section>
     </section>
 
-    <section id="architecture" class="card">
-      <div class="section-head">
-        <h2>System Architecture</h2>
-        <p>This MVP demonstrates the frontend layer of a production-ready event outreach system.</p>
-      </div>
-      <div class="architecture-grid">
-        <article class="architecture-item">
-          <h3>Vercel Frontend</h3>
-          <p>Static UI for operations, scripts, reminders, and check-in workflow.</p>
-        </article>
-        <article class="architecture-item">
-          <h3>Supabase Database</h3>
-          <p>Leads, events, attendees, and outreach history stored with auditability.</p>
-        </article>
-        <article class="architecture-item">
-          <h3>n8n or Make Automation</h3>
-          <p>Workflow orchestration for reminders, status updates, and reporting tasks.</p>
-        </article>
-        <article class="architecture-item">
-          <h3>Retell AI Calling</h3>
-          <p>Automated voice outreach for confirmations with configurable script flows.</p>
-        </article>
-        <article class="architecture-item">
-          <h3>Twilio SMS</h3>
-          <p>Consent-aware text reminders and response handling.</p>
-        </article>
-        <article class="architecture-item">
-          <h3>SendGrid or Postmark Email</h3>
-          <p>Email invites and reminders with delivery visibility.</p>
-        </article>
-        <article class="architecture-item">
-          <h3>CRM Integration</h3>
-          <p>Sync attendee lifecycle stages to external CRM systems.</p>
-        </article>
-        <article class="architecture-item">
-          <h3>Consent-Aware Outreach Logging</h3>
-          <p>Track consent source, channel, and message history to support compliant operations.</p>
-        </article>
-      </div>
+    <section class="tab-panel" data-panel="analytics">
+      <section id="analytics" class="card">
+        <div class="section-head">
+          <h2>Analytics</h2>
+        </div>
+        <div id="analyticsGrid" class="metric-grid"></div>
+        <div id="leadNeedPanel" class="lead-need-panel"></div>
+      </section>
+
+      <section id="performanceInsights" class="card">
+        <div class="section-head">
+          <h2>Performance Insights</h2>
+        </div>
+        <div id="performanceInsightsGrid" class="metric-grid"></div>
+        <ul id="improvementTips" class="tips-list"></ul>
+      </section>
     </section>
   </main>
+
+  <dialog id="architectureDialog" class="modal">
+    <h3>Production Ready Architecture</h3>
+    <p>Scale this prototype with production integrations:</p>
+    <ul>
+      <li>n8n or Make automation orchestration</li>
+      <li>Retell AI outbound calling flows</li>
+      <li>Twilio SMS campaigns</li>
+      <li>Supabase event and outreach data layer</li>
+      <li>CRM sync for lifecycle tracking</li>
+    </ul>
+    <div class="action-row">
+      <button id="closeArchitectureDialog" class="btn" type="button">Close</button>
+    </div>
+  </dialog>
 
   <script src="app.js"></script>
 </body>
