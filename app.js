@@ -561,11 +561,17 @@
   function getNextActions() {
     const event = getActiveEvent();
     const planner = computePlanner();
-    const metrics = computeMetrics(event);
+    const metrics = planner.metrics;
     const actions = [];
 
-    if (planner.gapVsCurrentLeads > 0) {
-      actions.push("Add approximately " + planner.gapVsCurrentLeads + " more leads to reach target.");
+    if (metrics.seatsRemaining > 0) {
+      const low = planner.lowLeadNeed;
+      const high = planner.highLeadNeed;
+      const rangeText = low === high ? String(low) : low + "–" + high;
+      actions.push(
+        "Add approximately " + rangeText + " more qualified leads to close the remaining " +
+        metrics.seatsRemaining + "-seat gap."
+      );
     }
 
     const interestedCount = event.leads.filter(function (lead) {
