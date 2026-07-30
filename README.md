@@ -100,6 +100,8 @@ Legacy data migration is supported from prior key eventFillEngine.v1.
 4. Use static/other settings (no build command).
 5. Deploy.
 
+The app is hosted at: [https://event-fill-engine.vercel.app/](https://event-fill-engine.vercel.app/)
+
 ## Export Feature
 
 Use Export Campaign Plan to download a JSON summary containing:
